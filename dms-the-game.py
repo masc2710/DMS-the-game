@@ -7,6 +7,13 @@
 '''
 
 import random
+from colorama import Fore, Style, init
+from rich.console import Console
+from rich.table import Table
+
+# Initialisiere Colorama und Rich
+init()
+console = Console()
 
 farben = ["Herz", "Eck", "Schaufel", "Kreuz"]
 werte = ["6", "7", "8", "9", "10", "Bube", "Dame", "König", "Ass"]
@@ -85,50 +92,80 @@ class Spiel:
         self.runde = 0
         self.active = [True]*4
 
+    def zeige_spielfeld(self):
+        """Zeigt das Spielfeld in einer kreisförmigen Anordnung."""
+        spielfeld = [" " for _ in range(36)]  # Leeres Spielfeld mit 36 Feldern
+
+        # Spieler auf dem Spielfeld platzieren
+        for sp in self.spieler:
+            spielfeld[sp.position] = sp.name[0]  # Nutze den ersten Buchstaben des Spielernamens
+
+        # Kreisförmige Darstellung
+        print("\n" + " " * 10 + f"{spielfeld[0]}---{spielfeld[1]}---{spielfeld[2]}---{spielfeld[3]}---{spielfeld[4]}")
+        print(" " * 8 + f"|                           |")
+        print(" " * 8 + f"|   {spielfeld[35]}                 {spielfeld[5]}   |")
+        print(" " * 8 + f"|                           |")
+        print(" " * 10 + f"{spielfeld[34]}                 {spielfeld[6]}")
+        print(" " * 8 + f"|                           |")
+        print(" " * 8 + f"|   {spielfeld[33]}                 {spielfeld[7]}   |")
+        print(" " * 8 + f"|                           |")
+        print(" " * 10 + f"{spielfeld[32]}---{spielfeld[31]}---{spielfeld[30]}---{spielfeld[29]}---{spielfeld[28]}")
+
+        print("\nLegende:")
+        for sp in self.spieler:
+            print(f"{sp.name[0]}: {sp.name}")
+
     def wurf(self):
         return random.randint(1, 6) + random.randint(1, 6)
 
     def runde_spielen(self):
-        print(f"\n--- Runde {self.runde + 1} ---")
+        print(Fore.MAGENTA + f"\n--- Runde {self.runde + 1} ---" + Style.RESET_ALL)
         for i, sp in enumerate(self.spieler):
             if not self.active[i]:
-                print(f"{sp.name} setzt aus.")
+                print(Fore.YELLOW + f"{sp.name} setzt aus." + Style.RESET_ALL)
                 self.active[i] = True
                 continue
 
-            input(f"{sp.name}, drücke Enter zum Würfeln...")
+            input(Fore.CYAN + f"{sp.name}, drücke Enter zum Würfeln..." + Style.RESET_ALL)
             wurf = self.wurf()
-            print(f"{sp.name} würfelt eine {wurf}!")
+            print(Fore.GREEN + f"{sp.name} würfelt eine {wurf}!" + Style.RESET_ALL)
 
             alte_position = sp.position
             neue_position = (sp.position + wurf) % 36
 
             # Prüfe, ob Spieler direkt auf Start landet
-            if neue_position != 0 and neue_position < alte_position:
-                distanz = (36 - alte_position) + neue_position
-                print(f"{sp.name} ist über Start gegangen und alle Spieler trinken 2 Schlücke!")
+            if neue_position == 0:
+                distanz = -alte_position
+                print(Fore.CYAN + f"{sp.name} landet direkt auf Start!" + Style.RESET_ALL)
             else:
-                distanz = neue_position - alte_position
+                # Prüfe, ob Spieler über Start gegangen ist
+                if neue_position < alte_position:
+                    distanz = (36 - alte_position) + neue_position
+                    print(Fore.YELLOW + f"{sp.name} ist über Start gegangen und alle Spieler trinken 2 Schlücke!" + Style.RESET_ALL)
+                else:
+                    distanz = neue_position - alte_position
 
             # Prüfe, ob Feld bereits besetzt ist
             besetzte_positionen = [spieler.position for spieler in self.spieler if spieler != sp]
             while neue_position in besetzte_positionen:
-                print(f"Feld {neue_position} ist bereits besetzt! {sp.name} rückt ein Feld weiter.")
+                print(Fore.RED + f"Feld {neue_position} ist bereits besetzt! {sp.name} rückt ein Feld weiter." + Style.RESET_ALL)
                 neue_position = (neue_position + 1) % 36
-                distanz += 1  # Laufmeter erhöhen, da Spieler ein Feld weiter rückt
+                distanz += 1
 
             sp.position = neue_position
-            sp.laufmeter += distanz  # Laufmeter aktualisieren
+            sp.laufmeter += distanz
 
             feld = self.brett[sp.position]
             if not feld.aufgedeckt:
                 feld.aufgedeckt = True
-                print(f"{sp.name} hat ein neues Feld aufgedeckt: {feld.karte} - {feld.effekt}")
+                print(Fore.BLUE + f"{sp.name} hat ein neues Feld aufgedeckt: {feld.karte} - {feld.effekt}" + Style.RESET_ALL)
             else:
-                print(f"{sp.name} ist auf {feld}")
+                print(Fore.BLUE + f"{sp.name} ist auf {feld}" + Style.RESET_ALL)
 
             self.feld_aktion(i, feld.effekt, wurf)
+
         self.runde += 1
+        self.zeige_spielfeld()  # Zeige das Spielfeld nach jeder Runde
 
     def feld_aktion(self, i, effekt, wurf):
         sp = self.spieler[i]
@@ -165,6 +202,7 @@ class Spiel:
 
     def start(self):
         print("Spiel gestartet! 4 Spieler, Ziel: am weitesten laufen!")
+        self.zeige_spielfeld()  # Zeige das Spielfeld zu Beginn
         while True:
             self.runde_spielen()
             self.status()
